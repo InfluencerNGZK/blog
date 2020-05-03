@@ -1,0 +1,218 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  
+
+  
+  <title>面向虚拟GPU的任务在线迁移与调度机制研究 | 若霏网络会所</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+  <meta name="description" content="1. 有关GPU设备的API调用检测CUDA上层实现包装库，截获API调用信息，后端守护进程通过网络接收前端传来的调用信息，通过前后端设计将GPU设备与客户端应用解耦。前后端设计可使应用运行在容器或者虚拟机中，从而在实现GPU计算资源虚拟化的同时，在后端实现灵活的资源共享与任务调度。 2. 针对CUDA应用的在线迁移及优化在线迁移：NVIDIA推出的统一内存架构，每个GPU或者CPU上的应用都能通">
+<meta property="og:type" content="article">
+<meta property="og:title" content="面向虚拟GPU的任务在线迁移与调度机制研究">
+<meta property="og:url" content="https://influencerngzk.github.io/2020/05/03/trypost/index.html">
+<meta property="og:site_name" content="若霏网络会所">
+<meta property="og:description" content="1. 有关GPU设备的API调用检测CUDA上层实现包装库，截获API调用信息，后端守护进程通过网络接收前端传来的调用信息，通过前后端设计将GPU设备与客户端应用解耦。前后端设计可使应用运行在容器或者虚拟机中，从而在实现GPU计算资源虚拟化的同时，在后端实现灵活的资源共享与任务调度。 2. 针对CUDA应用的在线迁移及优化在线迁移：NVIDIA推出的统一内存架构，每个GPU或者CPU上的应用都能通">
+<meta property="og:locale" content="en_US">
+<meta property="article:published_time" content="2020-05-03T03:54:24.000Z">
+<meta property="article:modified_time" content="2020-05-03T07:37:22.188Z">
+<meta property="article:author" content="Jason">
+<meta property="article:tag" content="post">
+<meta name="twitter:card" content="summary">
+  
+    <link rel="alternate" href="/intro/atom.xml" title="若霏网络会所" type="application/atom+xml">
+  
+  
+    <link rel="icon" href="/favicon.png">
+  
+  
+    <link href="//fonts.googleapis.com/css?family=Source+Code+Pro" rel="stylesheet" type="text/css">
+  
+  
+<link rel="stylesheet" href="/intro/css/style.css">
+
+<meta name="generator" content="Hexo 4.2.0"></head>
+
+<body>
+  <div id="container">
+    <div id="wrap">
+      <header id="header">
+  <div id="banner"></div>
+  <div id="header-outer" class="outer">
+    <div id="header-title" class="inner">
+      <h1 id="logo-wrap">
+        <a href="/intro/" id="logo">若霏网络会所</a>
+      </h1>
+      
+    </div>
+    <div id="header-inner" class="inner">
+      <nav id="main-nav">
+        <a id="main-nav-toggle" class="nav-icon"></a>
+        
+          <a class="main-nav-link" href="/intro/">Home</a>
+        
+          <a class="main-nav-link" href="/intro/archives">Archives</a>
+        
+      </nav>
+      <nav id="sub-nav">
+        
+          <a id="nav-rss-link" class="nav-icon" href="/intro/atom.xml" title="RSS Feed"></a>
+        
+        <a id="nav-search-btn" class="nav-icon" title="Search"></a>
+      </nav>
+      <div id="search-form-wrap">
+        <form action="//google.com/search" method="get" accept-charset="UTF-8" class="search-form"><input type="search" name="q" class="search-form-input" placeholder="Search"><button type="submit" class="search-form-submit">&#xF002;</button><input type="hidden" name="sitesearch" value="https://influencerngzk.github.io"></form>
+      </div>
+    </div>
+  </div>
+</header>
+      <div class="outer">
+        <section id="main"><article id="post-trypost" class="article article-type-post" itemscope itemprop="blogPost">
+  <div class="article-meta">
+    <a href="/intro/2020/05/03/trypost/" class="article-date">
+  <time datetime="2020-05-03T03:54:24.000Z" itemprop="datePublished">2020-05-03</time>
+</a>
+    
+  </div>
+  <div class="article-inner">
+    
+    
+      <header class="article-header">
+        
+  
+    <h1 class="article-title" itemprop="name">
+      面向虚拟GPU的任务在线迁移与调度机制研究
+    </h1>
+  
+
+      </header>
+    
+    <div class="article-entry" itemprop="articleBody">
+      
+        <h3 id="1-有关GPU设备的API调用检测"><a href="#1-有关GPU设备的API调用检测" class="headerlink" title="1. 有关GPU设备的API调用检测"></a>1. 有关GPU设备的API调用检测</h3><p>CUDA上层实现包装库，截获API调用信息，后端守护进程通过网络接收前端传来的调用信息，通过前后端设计将GPU设备与客户端应用解耦。前后端设计可使应用运行在容器或者虚拟机中，从而在实现GPU计算资源虚拟化的同时，在后端实现灵活的资源共享与任务调度。</p>
+<h3 id="2-针对CUDA应用的在线迁移及优化"><a href="#2-针对CUDA应用的在线迁移及优化" class="headerlink" title="2. 针对CUDA应用的在线迁移及优化"></a>2. 针对CUDA应用的在线迁移及优化</h3><p>在线迁移：NVIDIA推出的统一内存架构，每个GPU或者CPU上的应用都能通过统一的内存地址访问其他CPU或者GPU设备的内存空间。<br>GPU功耗：相比在GPU设备上运行一个应用，同时运行两个应用仅会增加少量功耗。多个轻量级应用运行在更少的GPU设备上可以提高整个系统的能耗效率。<br>技术挑战：<br>（1）如何以较低开销构造一致的应用运行环境。<br>（2）确保迁移后内存地址不变。<br>（3）在目标GPU上恢复未完成的计算任务。<br>解决方案：<br>（1）克隆一致运行环境，目标GPU提前初始化一些库，立即获取所需库的句柄，按需加载对应的核函数<br>（2）内存数据迁移，使用统一内存避免显式迁移数据，缺页异常？<br>（3）恢复计算任务，向源GPU发送同步指令，在源GPU运行完正在运行的任务，在目标GPU运行等待运行的任务</p>
+<h3 id="3-GPU设备间动态调度"><a href="#3-GPU设备间动态调度" class="headerlink" title="3. GPU设备间动态调度"></a>3. GPU设备间动态调度</h3><p>现有静态调度：轮询调度、最小负载调度、基于预测的调度<br>问题：无法提前获取准确资源需求；不能将正在运行的应用迁移来平衡GPU之间的负载；资源需求低的应用被高的阻塞<br>动态调度难点难点：<br>（1）频繁迁移应用会导致迁移抖动（欠载GPU在任务到达后马上过载）<br>（2）GPU欠载导致性能降低<br>（3）资源竞争与资源分配的不公平<br>动态调度解决方案：<br>（1）负载平衡调度：设置上下阈值确定欠载与过载GPU，选定一组欠载+过载作为迁移候选对象。贪婪策略选择需要迁移的应用（单个或多个），迁移后不会使欠载变为过载。<br>（2）能耗感知调度：首先进行负载均衡调度，将应用均匀分配给各个GPU设备以保证更好的性能，而后取负载最小的两个GPU上的应用进行合并，并且保证合并后不会影响性能。<br>（3）公平性调度：过载GPU需求高与需求低应用的公平性竞争。时间分配策略，将GPU运行时间进行时间片划分，同时将应用分为几组，在每个时间片上运行一组应用，记录对GPU设备使用信息，如果超出时间将对其进行惩罚。一组的应用的选取，确保应用之间不会产生激烈竞争，同时应尽可能利用计算资源，允许略高于计算能力；优先级调度策略，针对同一组内的应用，给予资源占用低的应用更高的优先级，可使其与占用高的应用进行资源竞争。</p>
+<h3 id="4-实验结果"><a href="#4-实验结果" class="headerlink" title="4. 实验结果"></a>4. 实验结果</h3><p>开销<br>负载均衡（利用率）<br>应用性能<br>公平性<br>不同负载测试</p>
+
+      
+    </div>
+    <footer class="article-footer">
+      <a data-url="https://influencerngzk.github.io/2020/05/03/trypost/" data-id="ck9qk3qmw0002h8y0adzd110r" class="article-share-link">Share</a>
+      
+      
+  <ul class="article-tag-list" itemprop="keywords"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/intro/tags/post/" rel="tag">post</a></li></ul>
+
+    </footer>
+  </div>
+  
+    
+<nav id="article-nav">
+  
+  
+    <a href="/intro/2020/05/03/hello-world/" id="article-nav-older" class="article-nav-link-wrap">
+      <strong class="article-nav-caption">Older</strong>
+      <div class="article-nav-title">Hello World</div>
+    </a>
+  
+</nav>
+
+  
+</article>
+
+</section>
+        
+          <aside id="sidebar">
+  
+    
+
+  
+    
+  <div class="widget-wrap">
+    <h3 class="widget-title">Tags</h3>
+    <div class="widget">
+      <ul class="tag-list" itemprop="keywords"><li class="tag-list-item"><a class="tag-list-link" href="/intro/tags/post/" rel="tag">post</a></li></ul>
+    </div>
+  </div>
+
+
+  
+    
+  <div class="widget-wrap">
+    <h3 class="widget-title">Tag Cloud</h3>
+    <div class="widget tagcloud">
+      <a href="/intro/tags/post/" style="font-size: 10px;">post</a>
+    </div>
+  </div>
+
+  
+    
+  <div class="widget-wrap">
+    <h3 class="widget-title">Archives</h3>
+    <div class="widget">
+      <ul class="archive-list"><li class="archive-list-item"><a class="archive-list-link" href="/intro/archives/2020/05/">May 2020</a></li></ul>
+    </div>
+  </div>
+
+
+  
+    
+  <div class="widget-wrap">
+    <h3 class="widget-title">Recent Posts</h3>
+    <div class="widget">
+      <ul>
+        
+          <li>
+            <a href="/intro/2020/05/03/trypost/">面向虚拟GPU的任务在线迁移与调度机制研究</a>
+          </li>
+        
+          <li>
+            <a href="/intro/2020/05/03/hello-world/">Hello World</a>
+          </li>
+        
+      </ul>
+    </div>
+  </div>
+
+  
+</aside>
+        
+      </div>
+      <footer id="footer">
+  
+  <div class="outer">
+    <div id="footer-info" class="inner">
+      &copy; 2020 Jason<br>
+      Powered by <a href="http://hexo.io/" target="_blank">Hexo</a>
+    </div>
+  </div>
+</footer>
+    </div>
+    <nav id="mobile-nav">
+  
+    <a href="/intro/" class="mobile-nav-link">Home</a>
+  
+    <a href="/intro/archives" class="mobile-nav-link">Archives</a>
+  
+</nav>
+    
+
+<script src="//ajax.googleapis.com/ajax/libs/jquery/2.0.3/jquery.min.js"></script>
+
+
+  
+<link rel="stylesheet" href="/intro/fancybox/jquery.fancybox.css">
+
+  
+<script src="/intro/fancybox/jquery.fancybox.pack.js"></script>
+
+
+
+
+<script src="/intro/js/script.js"></script>
+
+
+
+
+  </div>
+</body>
+</html>
